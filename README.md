@@ -3,7 +3,7 @@ jmers: Kmer-guided processing of jumping reads
 
 Clean and process jumping reads using a kmer database built from 'good' sequences of the same genome.  The 'good' sequences are assumed to contain all to nearly all of the kmers found in the target genome, and the jumping reads are assumed to be in various stages of incomplete processing.
 
-Regarldess of the protocol used to prepare jumping-read libraries, only the ends of genomic fragments are maintained, with intervening sequence removed and with additional utility sequences added.  Traditional jumping-read processing has involved conservative trim choices due to inability to know with reasonable certainty where the boundaries of the genomic and utility sequences may be found in the fragments ultimately sequences.
+Regardless of the protocol used to prepare jumping-read libraries, only the ends of genomic fragments are maintained, with intervening sequence removed and with additional utility sequences added.  Traditional jumping-read processing has involved conservative trim choices due to inability to know with reasonable certainty where the boundaries of the genomic and utility sequences may be found in the fragments ultimately sequences.
 
 Kmer-based processing uses a set of putative 'good' genomic kmers to makes fewer assumptions about what is and is not genomic sequence in jumping-read fragments, and should result in more accurate trimming and, ultimately, longer read lengths after trimming.  Longer lengths of jumping reads enables more accurate mapping and lower link thresholds during scaffolding.
 
@@ -37,3 +37,40 @@ Dreaming:
 * Extend to mate-pair processing
 * Some form of paired-end contamination removal
 * Produce candidate subsets of jumping reads: matching 'good kmers' in a sequence subset
+
+
+Design
+------
+
+It seems straightforward enough that an exhaustively designed class hierarchy might be unnecessary.
+
+`FEFragment`:
+
+```c++
+    FEFragment(std::string fastq_record) // constructor
+    joined_name
+    joined_sequence
+    joined_quality
+    infer_fragment_structure()  // fills end1_pos etc.
+    end1_pos
+    ligation_pos
+    end2_pos
+    split_fragment()  // fill read1_* and read2_*
+    read1_name
+    read1_sequence
+    read1_quality
+    read2_name
+    read2_sequence
+    read2_quality
+    write_fragment_pair_fastq()
+```
+
+```c++
+// infer and set end1_pos, ligation_pos, end2_pos using a left-to-right kmer walk
+// of the joined fragment
+void infer_fragment_structure() {
+    // see plan figure for expected profile
+    // this may not always apply, especially if the read merging didn't work out well
+    // we could provide some parameters to adjust, at both structure inference and fragment splitting
+}
+```
