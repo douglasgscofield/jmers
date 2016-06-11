@@ -40,14 +40,14 @@ class Seq {
         } else has_quality = (l == 0);
     }
     void dump(std::ostream& os) const {
-        os << "jmers::Seq :";
+        os << "jmers::Seq::dump:";
         os << " l=" << l << " has_quality=" << has_quality;
         os << " name=" << name << " comment=" << comment;
         os << " sequence=" << sequence << " quality=" << quality;
         os << std::endl;
     }
     void write_fastq(std::ostream& os) const {
-        if (! has_quality) { std::cerr << "jmers::seq.write_fastq: no quality string" << std::endl; exit(1); }
+        if (! has_quality) { std::cerr << "jmers::Seq::write_fastq: no quality string" << std::endl; exit(1); }
         os << "@" << name;
         if (comment.length()) os << " " << comment;
         os << std::endl << sequence << std::endl << "+" << std::endl << quality << std::endl;
