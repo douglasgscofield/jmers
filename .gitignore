@@ -3,6 +3,10 @@ kseq/Makefile
 kseq/kseq.tar.bz2
 kseq/kseq_test.c
 kseq/test.seq
+kseq/kseq_test
+
+# osx symbols
+*.dSYM
 
 # Compiled Object files
 *.slo

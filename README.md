@@ -28,19 +28,17 @@ Plan:
 * Output fosmid end read pair
 * Get a better genome assembly in the end
 
+Correcting:
+
 Kmer-walking within known-kmer contexts will be walking through messy kmers
 containing sequencing errors.  We might consider doing some simple correction,
 perhaps using correction code from some other tool?
-
-
-![Plan](plan_20160610.jpg)
-
 
 Dreaming:
 
 * Extend to mate-pair processing
 * Some form of paired-end contamination removal
-* Produce candidate subsets of jumping reads: matching 'good kmers' in a sequence subset
+* Produce candidate subsets of jumping reads: reads matching 'good kmers' in a sequence subset
 
 
 Design
@@ -110,3 +108,8 @@ void infer_fragment_structure() {
     // we could provide some parameters to adjust, at both structure inference and fragment splitting
 }
 ```
+
+
+![Plan](plan_20160610.jpg)
+
+
