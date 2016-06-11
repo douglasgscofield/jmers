@@ -48,7 +48,7 @@ Design
 
 The namespace is `jmers`.
 
-The `Seq` struct (`Seq.h`) is a simple sequence holder with members `name`,
+The `Seq` class (`Seq.h`) is a simple sequence holder with members `name`,
 `comment`, `sequence`, `quality`, `l` (sequence length) and `has_quality` and
 methods for `fill()`, `write_fastq()`, `write_fasta()`.
 

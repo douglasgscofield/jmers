@@ -14,14 +14,15 @@ extern "C" {
 }
 namespace jmers {
 
-struct Seq {
+class Seq {
+  public:
     std::string name, comment, sequence, quality;
-    size_t l;
-    bool has_quality;
+    size_t l;          // sequence length shortcut, so l == 0 if no sequence
+    bool has_quality;  // false when sequence with no quality, so true if no sequence
     Seq()  // default constructor
-        : l(0), has_quality(false)
+        : l(0), has_quality(true)
     { }
-    Seq(kseq_t *kseq_seq)  // constructor from kseq.h seq
+    Seq(kseq_t *kseq_seq)  // constructor using kseq.h kseq_t
     {
         fill(kseq_seq);
     }
@@ -49,18 +50,14 @@ struct Seq {
         if (! has_quality) { std::cerr << "jmers::seq.write_fastq: no quality string" << std::endl; exit(1); }
         os << "@" << name;
         if (comment.length()) os << " " << comment;
-        os << std::endl;
-        os << sequence << std::endl;
-        os << "+" << std::endl;
-        os << quality << std::endl;
+        os << std::endl << sequence << std::endl << "+" << std::endl << quality << std::endl;
     }
     void write_fasta(std::ostream& os, int linewidth = 0) const {
         os << ">" << name;
         if (comment.length()) os << " " << comment;
-        os << std::endl;
-        os << sequence << std::endl;
+        os << std::endl << sequence << std::endl;
     }
-}; // struct seq
+}; // class Seq
 
 } // namespace jmers
 
