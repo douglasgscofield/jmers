@@ -28,6 +28,10 @@ Plan:
 * Output fosmid end read pair
 * Get a better genome assembly in the end
 
+Kmer-walking within known-kmer contexts will be walking through messy kmers
+containing sequencing errors.  We might consider doing some simple correction,
+perhaps using correction code from some other tool?
+
 
 ![Plan](plan_20160610.jpg)
 
