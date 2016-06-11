@@ -42,27 +42,59 @@ Dreaming:
 Design
 ------
 
-It seems straightforward enough that an exhaustively designed class hierarchy might be unnecessary.
+The namespace is `jmers`.
 
-`FEFragment`:
+The `Seq` struct (`Seq.h`) is a simple sequence holder with members `name`,
+`comment`, `sequence`, `quality`, `l` (sequence length) and `has_quality` and
+methods for `fill()`, `write_fastq()`, `write_fasta()`.
+
+The `Input` class (`Input.h`) is a simple sequence reader that uses Heng Li's
+[`kseq.h`](http://lh3lh3.users.sourceforge.net/kseq.shtml) to read FastQ- and
+Fasta-format input.  The constructor can receive a filename via `std::string`
+or `char *`; `read(Seq&)` method fills a `Seq`, returning `false` if
+end-of-file; and `close()` shuts things down.  `Input` can currently handle
+uncompressed and gzip-compressed input (via `kseq.h`) but will be extended to
+handle bzip2 and xz formats and will also be able to read from stdin/fifo.
+
+The `FosmidEndFragment` class initialises with a `Seq` and implements methods
+for inferring boundaries, splitting the fragment after inference into separate
+`Seq`s for read1 and read2, and writing them out.
+
+Boundary inference might be better abstracted into a separate factory so that
+various fragment types needn't duplicate common inference code, for example
+sliding contexts from non-genomic to genomic, genomic to chimeric genomic, and
+genomic to non-genomic.  That would also make it easier to add additional
+context slides from contaminant (kmer db 1) to noncontaminant (kmer db 2), etc.
+
 
 ```c++
-    FEFragment(std::string fastq_record) // constructor
-    joined_name
-    joined_sequence
-    joined_quality
-    infer_fragment_structure()  // fills end1_pos etc.
-    end1_pos
-    ligation_pos
-    end2_pos
-    split_fragment()  // fill read1_* and read2_*
-    read1_name
-    read1_sequence
-    read1_quality
-    read2_name
-    read2_sequence
-    read2_quality
-    write_fragment_pair_fastq()
+class FosmidEndFragment {
+    Seq fragment;
+    int64_t end1_pos;      // leftmost inferred start of genomic sequence in fragment
+    int64_t ligation_pos;  // inferred site of ligation between fosmid ends in fragment
+    int64_t end2_pos;      // rightmost inferred end of genomic sequence in fragment
+    FosmidEndFragment(const Seq& s)
+        : fragment(s), end1_pos(-1), ligation_pos(-1), end2_pos(-1)
+    {
+        // is default copy constructor OK?
+    }
+    void infer_fragment_structure() {
+        // fill end1_pos
+        // fill ligation_pos
+        // fill end2_pos
+    }
+    Seq read1;
+    Seq read2;
+    void split_fragment() {
+        // use inferred *_pos to fill read1 and read2 from fragment
+        // parameters could set buffer around inferred positions, etc., etc.
+    }
+    write_fragment_pair_fastq() {
+        // where is output going...
+        read1.write_fastq(read1_ostream);
+        read2.write_fastq(read2_ostream);
+    }
+}
 ```
 
 ```c++
