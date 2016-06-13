@@ -24,9 +24,12 @@ std::ostream read2_ostream = std::cout;  // for read2 output
 
 class FosmidEndFragment {
     Seq fragment;
-    int64_t end1_pos;     // leftmost inferred start of genomic sequence in fragment
-    int64_t ligation_pos; // inferred site of ligation between fosmid ends in fragment
-    int64_t end2_pos;     // rightmost inferred end of genomic sequence in fragment
+    int64_t end1_pos;      // leftmost inferred start of genomic sequence in fragment
+    // if inference of ligation was 'perfect', then ligation1_pos and ligation2_pos are
+    // identical
+    int64_t ligation1_pos; // leftmost site of ligation between fosmid ends in fragment
+    int64_t ligation2_pos; // rightmost site of ligation between fosmid ends in fragment
+    int64_t end2_pos;      // rightmost inferred end of genomic sequence in fragment
     Seq read1;  // filled by split_fragment
     Seq read2;  // filled by split_fragment
 
@@ -42,7 +45,8 @@ class FosmidEndFragment {
 
     void infer_fragment_structure() {
         // fill end1_pos
-        // fill ligation_pos
+        // fill ligation1_pos
+        // fill ligation2_pos
         // fill end2_pos
     }
 
@@ -57,10 +61,10 @@ class FosmidEndFragment {
         std::stringstream nm_ss;
         nm_ss << fragment.name << ":FFE";
         // read boundaries
-        int64_t read1_beg = end1_pos     + end_pad;
-        int64_t read1_len = ligation_pos - end_pad - read1_beg;
-        int64_t read2_beg = ligation_pos + end_pad;
-        int64_t read2_len = end2_pos     - end_pad - read2_beg;
+        int64_t read1_beg = end1_pos      + end_pad;
+        int64_t read1_len = ligation1_pos - end_pad - read1_beg;
+        int64_t read2_beg = ligation2_pos + end_pad;
+        int64_t read2_len = end2_pos      - end_pad - read2_beg;
         if (fragment.has_quality) {
             read1.fill(nm_ss.str(), "1", fragment.sequence.substr(read1_beg, read1_len),
                        fragment.quality.substr(read1_beg, read1_len));
