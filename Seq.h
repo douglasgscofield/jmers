@@ -14,7 +14,6 @@ extern "C" {
 }
 namespace jmers {
 
-const std::string empty = std::string();
 
 class Seq {
   public:

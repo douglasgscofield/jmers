@@ -18,10 +18,6 @@
 
 namespace jmers {
 
-int64_t end_pad = 3; // when splitting fragment, trim this many bp in from each end pos
-std::ostream read1_ostream = std::cout;  // for read1 output
-std::ostream read2_ostream = std::cout;  // for read2 output
-
 class FosmidEndFragment {
     Seq fragment;
     int64_t end1_pos;      // leftmost inferred start of genomic sequence in fragment
@@ -36,7 +32,7 @@ class FosmidEndFragment {
   public:
 
     FosmidEndFragment(const Seq& s)
-        : fragment(s), end1_pos(-1), ligation_pos(-1), end2_pos(-1)
+        : fragment(s), end1_pos(-1), ligation1_pos(-1), ligation2_pos(-1), end2_pos(-1)
     {
         // is default copy constructor OK?
     }
@@ -52,8 +48,9 @@ class FosmidEndFragment {
 
     void split_fragment() {
         // use inferred *_pos to fill read1 and read2 from fragment
-        if (end1_pos < 0 || ligation_pos < 0 || end2_pos < 0 ||
-                end1_pos >= ligation_pos || ligation_pos >= end2_pos) {
+        if (end1_pos < 0 || ligation1_pos < 0 || ligation2_pos < 0 || end2_pos < 0
+                || end1_pos >= ligation1_pos || ligation2_pos >= end2_pos
+                || ligation1_pos > ligation2_pos) {
             std::cerr << "jmers::FosmidEndFragment::split_fragment: pos values incorrect" << std::endl;
             dump(); exit(1);
         }
@@ -85,12 +82,12 @@ class FosmidEndFragment {
         read1.write_fasta(read1_ostream);
         read2.write_fasta(read2_ostream);
     void dump(std::ostream& os = std::cerr) const {
-        os << "jmers::FosmidEndFragment::dump: ";
-        os << " fragment="; fragment.dump(os);
-        os << " end1_pos=" << end1_pos << " ligation_pos=" << ligation_pos
-            << " end2_pos=" << end2_pos << std::endl;
-        os << " read1="; read1.dump(os);
-        os << " read2="; read2.dump(os);
+        os << "jmers::FosmidEndFragment::dump:" << std::endl;
+        os << "    fragment="; fragment.dump(os);
+        os << "    end1_pos=" << end1_pos << " ligation1_pos=" << ligation1_pos
+            << " ligation2_pos=" << ligation2_pos << " end2_pos=" << end2_pos << std::endl;
+        os << "    read1="; read1.dump(os);
+        os << "    read2="; read2.dump(os);
     }
 }; // class FosmidEndFragment
 
