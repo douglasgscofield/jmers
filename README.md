@@ -18,7 +18,7 @@ The first target is to process fosmid end sequences.  Some characteristics of th
 7. Conservative trimming resulted in a judgment of keeping the outer 80-90 bp of the end of each joined fragment, after trimming away the outermost 10 bp.
 8. We think we can do better than that
 
-Plan:
+**Plan**:
 
 * Read in 'good' genomic sequences (WGS assemblies, superreads, fosmid pool contigs, etc.)
 * Create 'good kmer' database
@@ -28,13 +28,15 @@ Plan:
 * Output fosmid end read pair
 * Get a better genome assembly in the end
 
-Correcting:
+**Correcting**: Kmer-walking within known-kmer contexts will be walking through
+messy kmers containing sequencing errors.  We might consider doing some simple
+correction, perhaps using correction code from some other tool?
 
-Kmer-walking within known-kmer contexts will be walking through messy kmers
-containing sequencing errors.  We might consider doing some simple correction,
-perhaps using correction code from some other tool?
+**Haplotypes**: Kmer-walking within known-kmer contexts will also be walking
+through kmers belonging to haplotypes that are not in the genome assembly code.
+Is this distinguishable from correction above?
 
-Dreaming:
+**Dreaming**:
 
 * Extend to mate-pair processing
 * Some form of paired-end contamination removal
