@@ -18,7 +18,7 @@ The first target is to process fosmid end sequences.  Some characteristics of th
 7. Conservative trimming resulted in a judgment of keeping the outer 80-90 bp of the end of each joined fragment, after trimming away the outermost 10 bp.
 8. We think we can do better than that
 
-Plan:
+**Plan**:
 
 * Read in 'good' genomic sequences (WGS assemblies, superreads, fosmid pool contigs, etc.)
 * Create 'good kmer' database
@@ -28,13 +28,15 @@ Plan:
 * Output fosmid end read pair
 * Get a better genome assembly in the end
 
-Correcting:
+**Correcting**: Kmer-walking within known-kmer contexts will be walking through
+messy kmers containing sequencing errors.  We might consider doing some simple
+correction, perhaps using correction code from some other tool?
 
-Kmer-walking within known-kmer contexts will be walking through messy kmers
-containing sequencing errors.  We might consider doing some simple correction,
-perhaps using correction code from some other tool?
+**Haplotypes**: Kmer-walking within known-kmer contexts will also be walking
+through kmers belonging to haplotypes that are not in the genome assembly code.
+Is this distinguishable from correction above?
 
-Dreaming:
+**Dreaming**:
 
 * Extend to mate-pair processing
 * Some form of paired-end contamination removal
@@ -58,9 +60,11 @@ end-of-file; and `close()` shuts things down.  `Input` can currently handle
 uncompressed and gzip-compressed input (via `kseq.h`) but will be extended to
 handle bzip2 and xz formats and will also be able to read from stdin/fifo.
 
-The `FosmidEndFragment` class initialises with a `Seq` and implements methods
-for inferring boundaries, splitting the fragment after inference into separate
-`Seq`s for read1 and read2, and writing them out.
+The `FosmidEndFragment` class (`FosmidEndFragment.h`) initialises with a `Seq`
+and implements methods for inferring boundaries, splitting the fragment after
+inference into separate `Seq`s for read1 and read2, and writing them out.
+Output still needs to be abstracted so the ultimate output format (Fasta,
+FastQ, something else) needn't be known by this and similar classes.
 
 Boundary inference might be better abstracted into a separate factory so that
 various fragment types needn't duplicate common inference code, for example
@@ -68,36 +72,6 @@ sliding contexts from non-genomic to genomic, genomic to chimeric genomic, and
 genomic to non-genomic.  That would also make it easier to add additional
 context slides from contaminant (kmer db 1) to noncontaminant (kmer db 2), etc.
 
-
-```c++
-class FosmidEndFragment {
-    Seq fragment;
-    int64_t end1_pos;      // leftmost inferred start of genomic sequence in fragment
-    int64_t ligation_pos;  // inferred site of ligation between fosmid ends in fragment
-    int64_t end2_pos;      // rightmost inferred end of genomic sequence in fragment
-    FosmidEndFragment(const Seq& s)
-        : fragment(s), end1_pos(-1), ligation_pos(-1), end2_pos(-1)
-    {
-        // is default copy constructor OK?
-    }
-    void infer_fragment_structure() {
-        // fill end1_pos
-        // fill ligation_pos
-        // fill end2_pos
-    }
-    Seq read1;
-    Seq read2;
-    void split_fragment() {
-        // use inferred *_pos to fill read1 and read2 from fragment
-        // parameters could set buffer around inferred positions, etc., etc.
-    }
-    write_fragment_pair_fastq() {
-        // where is output going...
-        read1.write_fastq(read1_ostream);
-        read2.write_fastq(read2_ostream);
-    }
-}
-```
 
 ```c++
 // infer and set end1_pos, ligation_pos, end2_pos using a left-to-right kmer walk

@@ -31,6 +31,7 @@ KSEQ_INIT(gzFile, gzread);
 }
 namespace jmers {
 
+
 class Seq {
   public:
     std::string name, comment, sequence, quality;
@@ -56,20 +57,34 @@ class Seq {
             has_quality = true;
         } else has_quality = (l == 0);
     }
-    void dump(std::ostream& os) const {
+    void fill(const std::string& n = empty, const std::string& c = empty,
+              const std::string& s = empty, const std::string& q = empty) {
+        name = n;
+        comment = c;
+        sequence = s;
+        quality = s;
+        l = sequence.length();
+        if (quality.length())
+            has_quality = true;
+        else has_quality = (l == 0);
+    }
+    void dump(std::ostream& os = std::cerr) const {
         os << "jmers::Seq::dump:";
         os << " l=" << l << " has_quality=" << has_quality;
         os << " name=" << name << " comment=" << comment;
         os << " sequence=" << sequence << " quality=" << quality;
         os << std::endl;
     }
-    void write_fastq(std::ostream& os) const {
-        if (! has_quality) { std::cerr << "jmers::Seq::write_fastq: no quality string" << std::endl; exit(1); }
+    void write_fastq(std::ostream& os = std::cout) const {
+        if (! has_quality) {
+            std::cerr << "jmers::Seq::write_fastq: no quality string" << std::endl;
+            exit(1);
+        }
         os << "@" << name;
         if (comment.length()) os << " " << comment;
         os << std::endl << sequence << std::endl << "+" << std::endl << quality << std::endl;
     }
-    void write_fasta(std::ostream& os, int linewidth = 0) const {
+    void write_fasta(std::ostream& os = std::cout, int linewidth = 0) const {
         os << ">" << name;
         if (comment.length()) os << " " << comment;
         os << std::endl << sequence << std::endl;
