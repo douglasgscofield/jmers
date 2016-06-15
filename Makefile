@@ -8,8 +8,25 @@
 #
 
 CC = g++
-CXXFLAGS = $(shell pkg-config --cflags jellyfish-2.0) -std=c++0x -Wall -O3
-LDFLAGS = -lz $(shell pkg-config --libs jellyfish-2.0) -Wl,--rpath=$(shell pkg-config --libs-only-L jellyfish-2.0 | sed -e 's/-L//g')
+CXXFLAGS = -Wall -O3
+LDFLAGS = -lz 
+
+ifeq ($(OS),Windows_NT)
+    CC = g++
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+        CC = g++
+        #
+        # Default values for OS X, since there's usually no pkg-config
+        #
+        CXXFLAGS += -I/usr/local/include/jellyfish-2.2.6/ -std=c++11
+        LDFLAGS += -L/usr/local/lib/ -ljellyfish-2.0
+    else
+        CXXFLAGS += -std=c++0x $(shell pkg-config --cflags jellyfish-2.0)
+        LDFLAGS += $(shell pkg-config --libs jellyfish-2.0) -Wl,--rpath=$(shell pkg-config --libs-only-L jellyfish-2.0 | sed -e 's/-L//g')
+    endif
+endif
 
 DEPS = kseq/kseq.h
 SOURCES = jmers.cc
