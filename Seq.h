@@ -1,7 +1,23 @@
-// TODO: GPLv3 header
+/*  This file is part of jmers.
+
+    jmers is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    jmers is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with jmers.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 // TODO: add pairing?
 // TODO: linewidth for write_fasta()
 
+#include "zlib.h"
 #include <string>
 #include <cctype>
 #include <iostream>
@@ -11,6 +27,7 @@ extern "C" {
 // carries MIT License
 // here we just need kseq_t
 #include "kseq/kseq.h"
+KSEQ_INIT(gzFile, gzread);
 }
 namespace jmers {
 
