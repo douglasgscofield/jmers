@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
                 while ( seq_file.read(s) )
                 {
                     s.dump(std::cout);
-                    kmer_content(filter, s, header.canonical());
+                    kmer_content(bq, s, header.canonical());
                 }
             }
             catch (std::exception &e)
