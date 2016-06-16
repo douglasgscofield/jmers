@@ -17,6 +17,7 @@
 // TODO: add pairing?
 // TODO: linewidth for write_fasta()
 
+#include "jmers.h"
 #include "zlib.h"
 #include <string>
 #include <cctype>

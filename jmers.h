@@ -13,7 +13,7 @@ int64_t end_pad = 3; // when splitting fragment, trim this many bp in from each 
 
 const std::string empty = std::string();  // empty string utility constant
 
-std::ostream read1_ostream = std::cout;  // for read1 output
-std::ostream read2_ostream = std::cout;  // for read2 output
+static std::ostream *read1_ostream = &std::cout;  // for read1 output
+static std::ostream *read2_ostream = &std::cout;  // for read2 output
 
 }  // namespace jmers
