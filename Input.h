@@ -28,6 +28,7 @@
 #include <cctype>
 #include <iostream>
 #include <fstream>
+#include <exception>
 
 #include "Seq.h"
 
@@ -40,6 +41,16 @@ extern "C" {
 // carries MIT License
 #include "kseq/kseq.h"
 }
+
+
+class JmersException: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Dammit. Something happened that indicates I'm not a good programmer... :(";
+  }
+} JmersException;
+
 
 class Input {
     std::string filename;  // filename
@@ -57,9 +68,17 @@ class Input {
         kseq_seq = kseq_init(fp);
     }
     bool read(Seq& s) {  // jmers::Seq from Seq.h
-        int64_t l = kseq_read(kseq_seq);
-        if (l < 0) return(false);
-        s.fill(kseq_seq);
+        try
+        {
+            int64_t l = kseq_read(kseq_seq);
+            if (l < 0) return(false);
+            s.fill(kseq_seq);
+        }
+        catch (std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            throw JmersException;
+        }
         return(true);
     }
     void close() {

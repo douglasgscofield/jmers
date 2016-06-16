@@ -23,7 +23,8 @@
     / Martin Norling
 */
 
-#include "Seq.h"
+//#include "Seq.h"
+#include "Input.h"
 #include <zlib.h>
 #include <iostream>
 
@@ -98,10 +99,7 @@ int main(int argc, char *argv[])
     }
     
     // fastq-parsing variables
-    gzFile fp;
-    kseq_t *seq;
     jmers::Seq s;
-    int l;
     
     // Parse jellyfish database
     std::ifstream in(argv[1], std::ios::in|std::ios::binary);
@@ -111,14 +109,14 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to parse header of file '" << argv[1] << "'" << std::endl;
         return 1;
     }
-    
+
     // set kmer length - taken from the database
     mer_dna::k(header.key_len() / 2);
-    
-    /* 
-        Jellyfish databases can use a bloom counter to make a faster, less 
+
+    /*
+        Jellyfish databases can use a bloom counter to make a faster, less
         accurate kmer counter, or just count everything the old fashioned way.
-        There's a slight differencet in how the database is queried depending 
+        There's a slight difference in how the database is queried depending
         on whether it was created using the bloom filter.
     */
     if ( header.format() == "bloomcounter" )
@@ -131,21 +129,23 @@ int main(int argc, char *argv[])
             return 1;
         }
         in.close();
-        
+
         // Parse through everything with a bloom counter database
         for (int i = 2; i < argc; i++)
         {
-            fp = gzopen(argv[i], "r");
-            seq = kseq_init(fp);
-            s.fill(seq);
-            while ( (l = kseq_read(seq)) >= 0 )
+            try
             {
-                s.fill(seq);
-                s.dump(std::cout);
-                kmer_content(filter, s, header.canonical());
+                jmers::Input seq_file = jmers::Input(argv[i]);
+                while ( seq_file.read(s) )
+                {
+                    s.dump(std::cout);
+                    kmer_content(filter, s, header.canonical());
+                }
             }
-            kseq_destroy(seq);
-            gzclose(fp);
+            catch (std::exception &e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
     }
     else if ( header.format() == binary_dumper::format )
@@ -158,23 +158,24 @@ int main(int argc, char *argv[])
                         header.size() - 1,
                         binary_map.length() - header.offset()
                        );
-        
+
         // Parse through everything with a 'regular' database
         for (int i = 2; i < argc; i++)
         {
-            fp = gzopen(argv[i], "r");
-            seq = kseq_init(fp);
-            s.fill(seq);
-            while ( (l = kseq_read(seq)) >= 0 )
+            try
             {
-                s.fill(seq);
-                s.dump(std::cout);
-                kmer_content(bq, s, header.canonical());
+                jmers::Input seq_file = jmers::Input(argv[i]);
+                while ( seq_file.read(s) )
+                {
+                    s.dump(std::cout);
+                    kmer_content(filter, s, header.canonical());
+                }
             }
-            kseq_destroy(seq);
-            gzclose(fp);
+            catch (std::exception &e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
-        //query_from_sequence(argv + 2, argv + argc, bq, header.canonical());
     } else
     {
         std::cerr << "Unsupported format '" << header.format() << "'. Must be a bloom counter or binary list." << std::endl;
