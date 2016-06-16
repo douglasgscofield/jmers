@@ -17,6 +17,9 @@
 // TODO: add pairing?
 // TODO: linewidth for write_fasta()
 
+#ifndef __JMERS_SEQ_H__
+#define __JMERS_SEQ_H__
+
 #include "jmers.h"
 #include "zlib.h"
 #include <string>
@@ -94,3 +97,4 @@ class Seq {
 
 } // namespace jmers
 
+#endif

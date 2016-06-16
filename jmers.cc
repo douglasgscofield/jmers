@@ -25,6 +25,7 @@
 
 //#include "Seq.h"
 #include "Input.h"
+#include "FosmidEndFragment.h"
 #include <zlib.h>
 #include <iostream>
 
@@ -38,54 +39,21 @@
 using jellyfish::mer_dna;
 using jellyfish::mer_dna_bloom_counter;
 
-int split_sequence_on_kmers(std::vector<int> &kmer_content, std::vector<int> &split_positions)
-{
-    std::cout << "kmers: ";
-    bool last = false;
-    int i = 0;
-    for ( auto p : kmer_content )
-    {
-        if ( last != p )
-            split_positions.push_back( i );
-        last = p;
-        i++;
-    }
-    if (last)
-        split_positions.push_back( i );
-    
-    return 0;
-}
-
 template<typename Database>
 int kmer_content(const Database& db, jmers::Seq s, bool canonical)
 {
     sequence_mers                           mers(canonical);
     const sequence_mers                     mers_end(canonical);
     
-    std::cout << ">" << s.name << "\n";
     mers = s.sequence;
+    jmers::FosmidEndFragment fosmid_end_fragment = jmers::FosmidEndFragment(s);
     
     std::vector<int> kmer_content;
-    std::vector<int> split_positions;
     for ( ; mers != mers_end; ++mers )
         kmer_content.push_back(db.check(*mers));
     
-    split_sequence_on_kmers( kmer_content, split_positions );
-    
-    
-    std::cout << "kmers: ";
-    for ( auto p : kmer_content )
-    {
-        std::cout << p << " ";
-    }
-    std::cout << "\n";
-    
-    std::cout << "split positions: ";
-    for ( auto p : split_positions )
-    {
-        std::cout << p << " ";
-    }
-    std::cout << "\n";
+    fosmid_end_fragment.infer_fragment_structure( kmer_content );
+    fosmid_end_fragment.dump();
     
     return 0;
 }
@@ -109,10 +77,10 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to parse header of file '" << argv[1] << "'" << std::endl;
         return 1;
     }
-
+    
     // set kmer length - taken from the database
     mer_dna::k(header.key_len() / 2);
-
+    
     /*
         Jellyfish databases can use a bloom counter to make a faster, less
         accurate kmer counter, or just count everything the old fashioned way.
@@ -129,7 +97,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         in.close();
-
+        
         // Parse through everything with a bloom counter database
         for (int i = 2; i < argc; i++)
         {
@@ -138,7 +106,6 @@ int main(int argc, char *argv[])
                 jmers::Input seq_file = jmers::Input(argv[i]);
                 while ( seq_file.read(s) )
                 {
-                    s.dump(std::cout);
                     kmer_content(filter, s, header.canonical());
                 }
             }
@@ -158,7 +125,7 @@ int main(int argc, char *argv[])
                         header.size() - 1,
                         binary_map.length() - header.offset()
                        );
-
+        
         // Parse through everything with a 'regular' database
         for (int i = 2; i < argc; i++)
         {
@@ -167,7 +134,6 @@ int main(int argc, char *argv[])
                 jmers::Input seq_file = jmers::Input(argv[i]);
                 while ( seq_file.read(s) )
                 {
-                    s.dump(std::cout);
                     kmer_content(bq, s, header.canonical());
                 }
             }

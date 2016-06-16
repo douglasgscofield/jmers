@@ -27,6 +27,7 @@
 #include <cctype>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include "Seq.h"
 
@@ -53,11 +54,60 @@ class FosmidEndFragment {
     ~FosmidEndFragment()  // default destructor OK
     { }
 
-    void infer_fragment_structure() {
-        // fill end1_pos
-        // fill ligation1_pos
-        // fill ligation2_pos
-        // fill end2_pos
+    void infer_fragment_structure(std::vector<int> kmer_content)
+    {
+        /*
+            TODO: make actual inference algorithm.
+         */
+        int i;
+        
+        // Set end1_pos to first ">0" in the kmer_content
+        i = 0;
+        for ( auto p : kmer_content )
+        {
+            if (p)
+            {
+                end1_pos = i;
+                break;
+            }
+            i++;
+        }
+        
+        // Set ligation1_pos to first "0" in the kmer_content larger than end1_pos
+        i = 0;
+        for ( auto p : kmer_content )
+        {
+            if ( !p && i>end1_pos )
+            {
+                ligation1_pos = i;
+                break;
+            }
+            i++;
+        }
+        
+        // Set ligation2_pos to last sequential "0" in the kmer_content larger than ligation1_pos
+        i = 0;
+        for ( auto p : kmer_content )
+        {
+            if ( p && i>ligation1_pos )
+            {
+                ligation2_pos = i-1;
+                break;
+            }
+            i++;
+        }
+        
+        // Set end2_pos to last ">0" in the kmer_content
+        i = 0;
+        for ( auto p : kmer_content )
+        {
+            if ( p && i>ligation2_pos )
+            {
+                end2_pos = i;
+            }
+            i++;
+        }
+        
     }
 
     void split_fragment() {
@@ -66,7 +116,7 @@ class FosmidEndFragment {
                 || end1_pos >= ligation1_pos || ligation2_pos >= end2_pos
                 || ligation1_pos > ligation2_pos) {
             std::cerr << "jmers::FosmidEndFragment::split_fragment: pos values incorrect" << std::endl;
-            dump(); exit(1);
+            fragment.dump(); exit(1);
         }
         // read name
         std::stringstream nm_ss;
@@ -86,15 +136,16 @@ class FosmidEndFragment {
             read2.fill(nm_ss.str(), "2", fragment.sequence.substr(read2_beg, read2_len));
         }
     }
-    void write_pair_fastq(ostream& os = std::cout) const {
+    void write_pair_fastq(std::ostream& os = std::cout) const {
         // where is output going...
-        read1.write_fastq(read1_ostream);
-        read2.write_fastq(read2_ostream);
+        read1.write_fastq(*read1_ostream);
+        read2.write_fastq(*read2_ostream);
     }
-    void write_pair_fasta(ostream& os = std::cout) const {
+    void write_pair_fasta(std::ostream& os = std::cout) const {
         // where is output going...
-        read1.write_fasta(read1_ostream);
-        read2.write_fasta(read2_ostream);
+        read1.write_fasta(*read1_ostream);
+        read2.write_fasta(*read2_ostream);
+    }
     void dump(std::ostream& os = std::cerr) const {
         os << "jmers::FosmidEndFragment::dump:" << std::endl;
         os << "    fragment="; fragment.dump(os);
@@ -105,5 +156,5 @@ class FosmidEndFragment {
     }
 }; // class FosmidEndFragment
 
-} // namespace jmers
+}; // namespace jmers
 
