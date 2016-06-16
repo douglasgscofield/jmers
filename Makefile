@@ -16,7 +16,7 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
-        CC = g++
+        CC = clang++
         #
         # Default values for OS X, since there's usually no pkg-config
         #
