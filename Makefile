@@ -11,6 +11,12 @@ CC = g++
 CXXFLAGS = -Wall -O3
 LDFLAGS = -lz 
 
+# build yaggo, add it to PATH so it can be found during
+YAGGO_BASE = yaggo
+YAGGO = $(YAGGO_BASE)/yaggo
+# build Jellyfish, prefix is build/, make and make install
+# autoreconf -i
+# ./configure --prefix=build/
 JELLYFISH_BASE = Jellyfish/build
 
 ifeq ($(OS),Windows_NT)
