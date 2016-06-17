@@ -36,6 +36,9 @@ correction, perhaps using correction code from some other tool?
 through kmers belonging to haplotypes that are not in the genome assembly code.
 Is this distinguishable from correction above?
 
+Both correcting and haplotypes should be addressed after the kmer boundaries
+are detected, eller hur?
+
 **Dreaming**:
 
 * Extend to mate-pair processing
@@ -72,18 +75,27 @@ sliding contexts from non-genomic to genomic, genomic to chimeric genomic, and
 genomic to non-genomic.  That would also make it easier to add additional
 context slides from contaminant (kmer db 1) to noncontaminant (kmer db 2), etc.
 
+The `KmerBoundary` class (`KmerBoundary.h`) implements a factory to detect
+kmer-determined boundaries between context A and context B.  It initialises
+with the type of boundary to detect and the kmer database(s) to use when
+detecting the contexts.  It does not initialise with the sense of the boundary,
+meaning whether the boundary is detected as a shift from A to B or from B to A.
+That is instead specified when the factory is used.
 
-```c++
-// infer and set end1_pos, ligation_pos, end2_pos using a left-to-right kmer walk
-// of the joined fragment
-void infer_fragment_structure() {
-    // see plan figure for expected profile
-    // this may not always apply, especially if the read merging didn't work out well
-    // we could provide some parameters to adjust, at both structure inference and fragment splitting
-}
-```
+The `KmerBoundary` class is used by passing it a `Seq`, a sense (context A to B
+or B to A), and optionally a starting position; the default starting position
+is the first position of the `Seq`.
 
+To determine boundaries while handling error-containing reads, we will use a
+technique based on that used in
+[Quorum](http://www.genome.umd.edu/quorum.html), which is natural since like
+Quorum we are using [Jellyfish](http://www.genome.umd.edu/jellyfish.html) to
+manage our kmer database.
 
-![Plan](plan_20160610.jpg)
-
-
+1. Scan both sides of a boundary against involved kmer databases to determine context to consider.
+2. Identify a good 'anchor' kmer to begin accretion
+3. Look for an alternative kmer in the desired direction by querying the kmer database for a kmer terminating at each of the four possible bases. We can't choose among these based on kmer depth as quorum does, because we assume our kmers are all good, but we can use backup to retry choices
+4. If there is one possibility, then choose it with a minimal penalty
+5. If there is more than one possible kmer, accept one and then slide one more base, repeating the process
+6. As we slide, if we cross a certain accumulated penalty, then go back and try alternate kmer choices
+7. If the accumulated error content exceeds some higher level, reject the kmer and therefore the read

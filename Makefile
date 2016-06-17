@@ -11,6 +11,8 @@ CC = g++
 CXXFLAGS = -Wall -O3
 LDFLAGS = -lz 
 
+JELLYFISH_BASE = Jellyfish/build
+
 ifeq ($(OS),Windows_NT)
     CC = g++
 else
@@ -20,8 +22,8 @@ else
         #
         # Default values for OS X, since there's usually no pkg-config
         #
-        CXXFLAGS += -I/usr/local/include/jellyfish-2.2.6/ -std=c++11
-        LDFLAGS += -L/usr/local/lib/ -ljellyfish-2.0
+        CXXFLAGS += -I$(JELLYFISH_BASE)/include/jellyfish-2.2.6 -std=c++11
+        LDFLAGS += -L$(JELLYFISH_BASE)/lib/ -ljellyfish-2.0
     else
         CXXFLAGS += -std=c++0x $(shell pkg-config --cflags jellyfish-2.0)
         LDFLAGS += $(shell pkg-config --libs jellyfish-2.0) -Wl,--rpath=$(shell pkg-config --libs-only-L jellyfish-2.0 | sed -e 's/-L//g')
