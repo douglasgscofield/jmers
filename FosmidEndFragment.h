@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "Seq.h"
+#include "jmerfish.hpp"
 
 namespace jmers {
 
@@ -53,13 +54,18 @@ class FosmidEndFragment {
     }
     ~FosmidEndFragment()  // default destructor OK
     { }
-
-    void infer_fragment_structure(std::vector<int> kmer_content)
+    
+    void infer_fragment_structure(jmers::JellyfishDatabase &db)
     {
         /*
             TODO: make actual inference algorithm.
          */
+        
         int i;
+        std::vector<int> kmer_content;
+        
+        for (int i = 0; i < this->fragment.sequence.length()-db.kmer; i++)
+            kmer_content.push_back( db.query( this->fragment.sequence.substr(i, db.kmer) ) );
         
         // Set end1_pos to first ">0" in the kmer_content
         i = 0;
@@ -72,7 +78,7 @@ class FosmidEndFragment {
             }
             i++;
         }
-        
+
         // Set ligation1_pos to first "0" in the kmer_content larger than end1_pos
         i = 0;
         for ( auto p : kmer_content )
@@ -84,7 +90,7 @@ class FosmidEndFragment {
             }
             i++;
         }
-        
+
         // Set ligation2_pos to last sequential "0" in the kmer_content larger than ligation1_pos
         i = 0;
         for ( auto p : kmer_content )
@@ -96,8 +102,9 @@ class FosmidEndFragment {
             }
             i++;
         }
-        
+
         // Set end2_pos to last ">0" in the kmer_content
+        // TODO: in the actual algorithm, this needs to take kmer length into consideration
         i = 0;
         for ( auto p : kmer_content )
         {

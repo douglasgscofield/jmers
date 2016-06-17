@@ -26,37 +26,11 @@
 //#include "Seq.h"
 #include "Input.h"
 #include "FosmidEndFragment.h"
+#include "jmerfish.hpp"
 #include <zlib.h>
 #include <iostream>
 
 #include <vector>
-
-#include <jellyfish/file_header.hpp>
-#include <jellyfish/mer_dna_bloom_counter.hpp>
-#include <jellyfish/jellyfish.hpp>
-#include "sequence_mers.hpp"
-
-using jellyfish::mer_dna;
-using jellyfish::mer_dna_bloom_counter;
-
-template<typename Database>
-int kmer_content(const Database& db, jmers::Seq s, bool canonical)
-{
-    sequence_mers                           mers(canonical);
-    const sequence_mers                     mers_end(canonical);
-    
-    mers = s.sequence;
-    jmers::FosmidEndFragment fosmid_end_fragment = jmers::FosmidEndFragment(s);
-    
-    std::vector<int> kmer_content;
-    for ( ; mers != mers_end; ++mers )
-        kmer_content.push_back(db.check(*mers));
-    
-    fosmid_end_fragment.infer_fragment_structure( kmer_content );
-    fosmid_end_fragment.dump();
-    
-    return 0;
-}
 
 int main(int argc, char *argv[])
 {
@@ -66,86 +40,30 @@ int main(int argc, char *argv[])
         return 0;
     }
     
+    // Load jellyfish database
+    jmers::JellyfishDatabase db( argv[1] );
+    
     // fastq-parsing variables
     jmers::Seq s;
     
-    // Parse jellyfish database
-    std::ifstream in(argv[1], std::ios::in|std::ios::binary);
-    jellyfish::file_header header(in);
-    if(!in.good())
+    for (int i = 2; i < argc; i++)
     {
-        std::cerr << "Failed to parse header of file '" << argv[1] << "'" << std::endl;
-        return 1;
-    }
-    
-    // set kmer length - taken from the database
-    mer_dna::k(header.key_len() / 2);
-    
-    /*
-        Jellyfish databases can use a bloom counter to make a faster, less
-        accurate kmer counter, or just count everything the old fashioned way.
-        There's a slight difference in how the database is queried depending
-        on whether it was created using the bloom filter.
-    */
-    if ( header.format() == "bloomcounter" )
-    {
-        jellyfish::hash_pair<mer_dna> fns(header.matrix(1), header.matrix(2));
-        mer_dna_bloom_counter filter(header.size(), header.nb_hashes(), in, fns);
-        if ( !in.good() )
+        try
         {
-            std::cerr << "Bloom filter file is truncated" << std::endl;
-            return 1;
-        }
-        in.close();
-        
-        // Parse through everything with a bloom counter database
-        for (int i = 2; i < argc; i++)
-        {
-            try
+            jmers::Input seq_file = jmers::Input(argv[i]);
+            while ( seq_file.read(s) )
             {
-                jmers::Input seq_file = jmers::Input(argv[i]);
-                while ( seq_file.read(s) )
-                {
-                    kmer_content(filter, s, header.canonical());
-                }
-            }
-            catch (std::exception &e)
-            {
-                std::cerr << e.what() << std::endl;
+                jmers::FosmidEndFragment fosmid_end_fragment = jmers::FosmidEndFragment(s);
+                fosmid_end_fragment.infer_fragment_structure( db );
+                fosmid_end_fragment.split_fragment();
+                fosmid_end_fragment.write_pair_fasta();
+                fosmid_end_fragment.dump();
             }
         }
-    }
-    else if ( header.format() == binary_dumper::format )
-    {
-        jellyfish::mapped_file binary_map(argv[1]);
-        binary_query bq(binary_map.base() + header.offset(),
-                        header.key_len(),
-                        header.counter_len(),
-                        header.matrix(),
-                        header.size() - 1,
-                        binary_map.length() - header.offset()
-                       );
-        
-        // Parse through everything with a 'regular' database
-        for (int i = 2; i < argc; i++)
+        catch (std::exception &e)
         {
-            try
-            {
-                jmers::Input seq_file = jmers::Input(argv[i]);
-                while ( seq_file.read(s) )
-                {
-                    kmer_content(bq, s, header.canonical());
-                }
-            }
-            catch (std::exception &e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
+            std::cerr << e.what() << std::endl;
         }
-    } else
-    {
-        std::cerr << "Unsupported format '" << header.format() << "'. Must be a bloom counter or binary list." << std::endl;
-        return 1;
     }
     
     return 0;
