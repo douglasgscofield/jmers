@@ -50,7 +50,7 @@ class JellyfishDatabase {
     
   public:
     JellyfishDatabase(const char* filename) { this->open(filename); }
-    JellyfishDatabase(std::string filename) : JellyfishDatabase( filename.c_str() ) { std::cout << "yeah" << std::endl; } 
+    JellyfishDatabase(std::string filename) : JellyfishDatabase( filename.c_str() ) {} 
     ~JellyfishDatabase() { in.close(); if (bloomcounter) { delete this->bloomfilter; } else { delete this->binary; } }
     
     int kmer = -1;
