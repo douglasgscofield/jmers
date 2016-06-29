@@ -55,68 +55,6 @@ class FosmidEndFragment {
     ~FosmidEndFragment()  // default destructor OK
     { }
     
-    void infer_fragment_structure(jmers::JellyfishDatabase &db)
-    {
-        /*
-            TODO: make actual inference algorithm.
-         */
-        
-        int i;
-        std::vector<int> kmer_content;
-        
-        for (int i = 0; i < this->fragment.sequence.length()-db.kmer; i++)
-            kmer_content.push_back( db.query( this->fragment.sequence.substr(i, db.kmer) ) );
-        
-        // Set end1_pos to first ">0" in the kmer_content
-        i = 0;
-        for ( auto p : kmer_content )
-        {
-            if (p)
-            {
-                end1_pos = i;
-                break;
-            }
-            i++;
-        }
-
-        // Set ligation1_pos to first "0" in the kmer_content larger than end1_pos
-        i = 0;
-        for ( auto p : kmer_content )
-        {
-            if ( !p && i>end1_pos )
-            {
-                ligation1_pos = i;
-                break;
-            }
-            i++;
-        }
-
-        // Set ligation2_pos to last sequential "0" in the kmer_content larger than ligation1_pos
-        i = 0;
-        for ( auto p : kmer_content )
-        {
-            if ( p && i>ligation1_pos )
-            {
-                ligation2_pos = i-1;
-                break;
-            }
-            i++;
-        }
-
-        // Set end2_pos to last ">0" in the kmer_content
-        // TODO: in the actual algorithm, this needs to take kmer length into consideration
-        i = 0;
-        for ( auto p : kmer_content )
-        {
-            if ( p && i>ligation2_pos )
-            {
-                end2_pos = i;
-            }
-            i++;
-        }
-        
-    }
-
     void split_fragment() {
         // use inferred *_pos to fill read1 and read2 from fragment
         if (end1_pos < 0 || ligation1_pos < 0 || ligation2_pos < 0 || end2_pos < 0

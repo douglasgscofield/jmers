@@ -26,6 +26,7 @@
 //#include "Seq.h"
 #include "Input.h"
 #include "FosmidEndFragment.h"
+#include "KmerBoundary.h"
 #include "jmerfish.hpp"
 #include <zlib.h>
 #include <iostream>
@@ -41,7 +42,8 @@ int main(int argc, char *argv[])
     }
     
     // Load jellyfish database
-    jmers::JellyfishDatabase db( argv[1] );
+    jmers::JellyfishDatabase jf_db( argv[1] );
+    jmers::KmerBoundarySimple kmer_boundary( &jf_db );
     
     // fastq-parsing variables
     jmers::Seq s;
@@ -53,11 +55,13 @@ int main(int argc, char *argv[])
             jmers::Input seq_file = jmers::Input(argv[i]);
             while ( seq_file.read(s) )
             {
-                jmers::FosmidEndFragment fosmid_end_fragment = jmers::FosmidEndFragment(s);
-                fosmid_end_fragment.infer_fragment_structure( db );
-                fosmid_end_fragment.split_fragment();
-                fosmid_end_fragment.write_pair_fasta();
+                jmers::FosmidEndFragment fosmid_end_fragment = kmer_boundary.detect_boundary(s);
+                // fosmid_end_fragment.infer_fragment_structure( db );
+                // fosmid_end_fragment.split_fragment();
+                // fosmid_end_fragment.write_pair_fasta();
                 fosmid_end_fragment.dump();
+                
+                break;
             }
         }
         catch (std::exception &e)

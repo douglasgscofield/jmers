@@ -49,6 +49,19 @@ class Seq {
         fill(kseq_seq);
     }
     ~Seq() { }
+    void extend(char base, int quality = 20, int quality_offset = 33)
+    {
+        sequence += base;
+        quality += (char)(quality + quality_offset);
+    }
+    void extend(std::string bases, int quality = 20, int quality_offset = 33)
+    {
+        sequence += bases;
+        for (auto c : bases)
+            quality += (char)(quality + quality_offset);
+        l += bases.length();
+    }
+    
     void fill(kseq_t *kseq_seq) {
         if (kseq_seq->name.l) name.assign(kseq_seq->name.s);
         if (kseq_seq->comment.l) comment.assign(kseq_seq->comment.s);

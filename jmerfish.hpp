@@ -30,7 +30,9 @@ using jellyfish::mer_dna_bloom_counter;
 namespace jmers {
 
 class JellyfishDatabase {
-    
+
+    bool        is_empty;
+    std::string description;
     std::ifstream in;
     jellyfish::file_header header;
     mer_dna_bloom_counter *bloomfilter;
@@ -49,12 +51,17 @@ class JellyfishDatabase {
     }
     
   public:
-    JellyfishDatabase(const char* filename) { this->open(filename); }
+    JellyfishDatabase(const char* filename) : is_empty(true) { this->open(filename); }
     JellyfishDatabase(std::string filename) : JellyfishDatabase( filename.c_str() ) {} 
     ~JellyfishDatabase() { in.close(); if (bloomcounter) { delete this->bloomfilter; } else { delete this->binary; } }
     
-    int kmer = -1;
+    std::string describe() const {
+        if (is_empty)
+            return "empty";
+        return description;
+    }
     
+    int kmer = -1;
     int open(const char* filename)
     {
         this->in = std::ifstream( filename, std::ios::in|std::ios::binary );
