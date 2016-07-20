@@ -45,8 +45,12 @@ int main(int argc, char *argv[])
     jmers::JellyfishDatabase jf_db( argv[1] );
     jmers::KmerBoundarySimple kmer_boundary( &jf_db );
     
+    //std::cout << "Loaded Jellyfish database, with kmer " << jf_db.kmer << std::endl;
+    
     // fastq-parsing variables
     jmers::Seq s;
+    
+    int c = 0;
     
     for (int i = 2; i < argc; i++)
     {
@@ -56,16 +60,17 @@ int main(int argc, char *argv[])
             while ( seq_file.read(s) )
             {
                 jmers::FosmidEndFragment fosmid_end_fragment = kmer_boundary.detect_boundary(s);
-                // fosmid_end_fragment.infer_fragment_structure( db );
-                // fosmid_end_fragment.split_fragment();
-                // fosmid_end_fragment.write_pair_fasta();
-                fosmid_end_fragment.dump();
+                //fosmid_end_fragment.split_fragment();
+                //fosmid_end_fragment.write_pair_fasta();
+                //fosmid_end_fragment.dump();
                 
-                break;
+                if ( ++c >= 100)
+                    break;
             }
         }
         catch (std::exception &e)
         {
+            std::cerr << "Something went wrong!" << std::endl;
             std::cerr << e.what() << std::endl;
         }
     }

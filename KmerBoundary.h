@@ -18,6 +18,7 @@
 #include <cctype>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 #include "jmerfish.hpp"
 
 namespace jmers {
@@ -49,50 +50,102 @@ class KmerBoundary {
 class KmerBoundarySimple : KmerBoundary {
     JellyfishDatabase *A;
     enum sense_t { sense_none = 0, sense_AB, sense_BA };
+    std::vector<int> kmer_content;
+    std::vector<int> base_support;
     
-    std::string extend_path(Seq& seq, int max_depth = 4, int i = 0, bool expand = false)
-    {
-        /* TODO: This function should be improved to try changes up until max_depth.
-           Right now it just corrects single errors...
-        */
-        if ( i == seq.sequence.length() )
-            return std::string();
-        
-        if ( A->query( seq.sequence.substr(i, A->kmer) ) == 0 )
-        {
-            if (expand)
-            {
-                for ( auto c : "ACTG" )
-                {
-                    if ( c == seq.sequence[i+A->kmer] )
-                        continue;
-                    if ( A->query(seq.sequence.substr(i, A->kmer-1) + c) )
-                        seq.sequence[i+ A->kmer -1] = c;
-                }
-            }
-        }
-        else
-        {
-            /* Once we're out of the first zero region, we can start trying to 
-               error correct things!
-             */
-            expand = true;
-        }
-        return seq.sequence[i] + extend_path(seq, max_depth, i+1, expand);
-    }
-    
-    Seq find_path(Seq& seq, int max_depth = 4, int i = 0, bool expand=false )
+    Seq error_correct(Seq& seq, int max_corrections_per_kmer = 4, bool exhaustive = false, float w_b = .5, float w_q = .5)
     {
         Seq out;
         out.comment     = seq.comment + " error corrected";
         out.has_quality = seq.has_quality;
         out.name        = seq.name;
-        /*
-         *  I've made this so that the first base is never changed. The reasoning
-         *  is that if it's a zero, it's considered to be part of the "junk" region
-         *  and if it's not, it shouldn't be changed...
-         */
-        out.extend( seq.sequence[i] + extend_path(seq, max_depth, i+1, expand) );
+        out.sequence    = seq.sequence;
+        out.quality     = seq.quality;
+        
+        int last_hit = A->kmer;
+        std::vector<int> positions;
+        positions.resize( max_corrections_per_kmer, 0 );
+        for (int i = 0; i < out.sequence.length(); i++)
+        {
+            if (i < this->kmer_content.size()-A->kmer)
+            {
+                int kmer = A->query( out.sequence.substr(i, A->kmer) );
+                if ( kmer == 0 )
+                {
+                    std::string current_kmer = out.sequence.substr(i, A->kmer);
+                    last_hit = last_hit < A->kmer ? last_hit+1 : A->kmer;
+                    
+                    /* ok - so... should I go through all possible positions?
+                        or should I make a list of positions and only check those
+                        with the lowest base_support? should I factor in quality?
+                        some sort of a*base_support+b*quality weighted value in 
+                        a list probably. then loop over the list and check 
+                        substitutions for all positions until we find the one
+                        with the highest score... or just one with "a" score?
+                        exhaustive search of all posibilities, or just check 
+                        all variables independent?
+                        
+                        I'm gonna need to recurse this a bit...
+                    
+                    */
+                    
+                    // make a list of all possible positions that could be "wrong"
+                    std::map<int, double> position_values;
+                    for (int p = 0; p < last_hit; p++)
+                    {
+                        int pos = i+A->kmer-last_hit+p;
+                        if (out.has_quality)
+                            position_values[pos] = w_b*base_support[pos] + w_q*((int)out.quality[pos]-33);
+                        else
+                            position_values[pos] = base_support[pos];
+                    }
+                    
+                    // remove the highest support possible position until no more than
+                    // "max_corrections_per_kmer" remain.
+                    
+                    while (position_values.size() > max_corrections_per_kmer)
+                    {
+                        auto x = std::max_element(position_values.begin(), position_values.end(),
+                            [](const std::pair<int, int>& p1, const std::pair<int, int>& p2) {
+                                return p1.second < p2.second; });
+                        position_values.erase(x);
+                    }
+                    // for (auto p: position_values)
+                    //     std::cout << p.first << " " << p.second << "\t";
+                    // std::cout << std::endl;
+                    
+                    if (exhaustive)
+                    {
+                        // TODO: implement this as a recursion.
+                        1+1;
+                    }
+                    else
+                    {
+                        for ( auto p : position_values )
+                        {
+                            int pos = p.first-i;
+                            for ( char c : {'A', 'T', 'C', 'G'} )
+                            {
+                                if ( c == out.sequence[p.first] )
+                                    continue;
+                                std::string new_kmer = current_kmer;
+                                new_kmer[pos] = c;
+                                
+                                if ( A->query( new_kmer ) )
+                                {
+                                    out.sequence[p.first] = c;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    last_hit = 0;
+                }
+            }
+        }
         return out;
     }
     
@@ -104,23 +157,62 @@ class KmerBoundarySimple : KmerBoundary {
         s << "A:" << A->describe();
         return s.str();
     }
-    jmers::FosmidEndFragment detect_boundary(Seq& seq)
+    jmers::FosmidEndFragment detect_boundary(Seq& seq, bool error_correct = true)
     {
-        Seq corrected_seq = find_path(seq);
-        seq.dump();
-        corrected_seq.dump();
-        jmers::FosmidEndFragment fosmid_end(corrected_seq);
-        
-        int i;
-        std::vector<int> kmer_content;
-        
+        /* Check kmer content of current sequence */
+        kmer_content.clear();
         for (int i = 0; i < seq.sequence.length()-A->kmer; i++)
         {
             kmer_content.push_back( A->query( seq.sequence.substr(i, A->kmer) ) );
-            std::cout << A->query( seq.sequence.substr(i, A->kmer) ) << " ";
         }
+        base_support.clear();
+        base_support.resize( seq.sequence.length(), 0 );
+        int o = 0;
+        for ( auto k : kmer_content)
+        {
+            for (int i = 0; i < A->kmer; i++)
+            {
+                base_support[o+i] += k;
+            }
+            o++;
+        }
+        
+        /* use the kmer content to error correct the sequence? */
+        Seq corrected_seq = error_correct ? this->error_correct(seq) : seq;
+        if (error_correct)
+        {
+            kmer_content.clear();
+            /* Update the kmer content */
+            for (int i = 0; i < seq.sequence.length()-A->kmer; i++)
+            {
+                kmer_content.push_back(  A->query( corrected_seq.sequence.substr(i, A->kmer) ) );
+            }
+            /* Update the base support */
+            base_support.clear();
+            base_support.resize( seq.sequence.length(), 0 );
+            o = 0;
+            for ( auto k : kmer_content)
+            {
+                for (int i = 0; i < A->kmer; i++)
+                {
+                    base_support[o+i] += k;
+                }
+                o++;
+            }
+        }
+        
+        /* print kmer content and base support */
+        std::cout << ">" << seq.name << std::endl;
+        for ( auto c : kmer_content )
+            std::cout << c << " ";
+        std::cout << std::endl;
+        for ( auto b : base_support )
+            std::cout << b << " ";
         std::cout << std::endl;
         
+        /* create fosmid end data structure */
+        jmers::FosmidEndFragment fosmid_end(corrected_seq);
+        //fosmid_end.infer_fragment_structure(kmer_content, base_support);
         return fosmid_end;
     }
 };   // class KmerBoundarySimple

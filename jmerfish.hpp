@@ -29,6 +29,15 @@ using jellyfish::mer_dna_bloom_counter;
 
 namespace jmers {
 
+
+class JellyfishException: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "JellyfishDatabase Exception: ";
+  }
+} JellyfishException;
+
 class JellyfishDatabase {
 
     bool        is_empty;
