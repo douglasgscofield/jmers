@@ -30,19 +30,69 @@
 #include "jmerfish.hpp"
 #include <zlib.h>
 #include <iostream>
-
 #include <vector>
+
+// from https://code.google.com/archive/p/simpleopt/
+#include "SimpleOpt.h"
+#include "SimpleGlob.h"
+
+// SimpleOpt command line argument handling
+enum { OPT_HELP, OPT_ERROR };
+CSimpleOpt::SOption g_rgOptions[] = {
+    { OPT_ERROR, "-e",     SO_NONE    }, // "-e"
+    { OPT_HELP,  "-?",     SO_NONE    }, // "-?"
+    { OPT_HELP,  "-h",     SO_NONE    }, // "-?"
+    { OPT_HELP,  "--help", SO_NONE    }, // "--help"
+    SO_END_OF_OPTIONS                       // END
+};
+
+void Help() {
+    printf( "USAGE: ./jmers [-e] [-?|-h|--help] <Jellyfish database> <fastq file>\n" );
+}
+
 
 int main(int argc, char *argv[])
 {
-    if ( argc < 3 )
+    // Process arguments with SimpleOpts
+    bool error_correct = true;
+    std::string database;
+    CSimpleOpt args(argc, argv, g_rgOptions);
+
+    while (args.Next()) {
+        if (args.LastError() == SO_SUCCESS) {
+            if (args.OptionId() == OPT_HELP) {
+                Help();
+                return 0;
+            }
+            else if (args.OptionId() == OPT_ERROR)
+                error_correct = false;
+            else
+                printf("Option, ID: %d, Text: '%s', Argument: '%s'\n",
+                    args.OptionId(), args.OptionText(),
+                    args.OptionArg() ? args.OptionArg() : "");
+        }
+        else {
+            printf("Invalid argument: %s\n", args.OptionText());
+            return 1;
+        }
+    }
+
+    CSimpleGlob glob(SG_GLOB_NODOT|SG_GLOB_NOCHECK);
+    if (SG_SUCCESS != glob.Add(args.FileCount(), args.Files())) {
+        printf("Error while globbing files\n");
+        return 1;
+    }
+    
+    if ( args.FileCount() < 2 )
     {
-        std::cerr << "USAGE: " << argv[0] << " jellyfish_db.jf seq_file [seq_file [...]]" << std::endl;
+        Help();
         return 0;
     }
     
+    database = args.Files()[0];
+    
     // Load jellyfish database
-    jmers::JellyfishDatabase jf_db( argv[1] );
+    jmers::JellyfishDatabase jf_db( database );
     jmers::KmerBoundarySimple kmer_boundary( &jf_db );
     
     //std::cout << "Loaded Jellyfish database, with kmer " << jf_db.kmer << std::endl;
@@ -52,11 +102,11 @@ int main(int argc, char *argv[])
     
     int c = 0;
     
-    for (int i = 2; i < argc; i++)
+    for (int i = 1; i < args.FileCount(); i++)
     {
         try
         {
-            jmers::Input seq_file = jmers::Input(argv[i]);
+            jmers::Input seq_file = jmers::Input( args.Files()[i] );
             while ( seq_file.read(s) )
             {
                 jmers::FosmidEndFragment fosmid_end_fragment = kmer_boundary.detect_boundary(s);
