@@ -7,6 +7,10 @@ kseq/kseq_test.c
 kseq/test.seq
 kseq/kseq_test
 
+# ignore temporary files in testdata/
+r1.fq
+r2.fq
+
 # osx symbols
 *.dSYM
 .DS_Store

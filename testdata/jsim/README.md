@@ -1,0 +1,55 @@
+Simulating read data
+====================
+
+To test jmers' algorithms, simulate paired-end read data for a known reference
+sequence with known error rates.  Join the reads into a single read with a
+known, randomised join position.  Then, create a Jellyfish kmer database for
+the reference and attempt to identify the join position within the read.
+
+I've made Heng Li's `wgsim` read simulator be a submodule here.  To get started
+here, compile as recommended.
+
+    cd wgsim
+    gcc -g -O2 -Wall -o wgsim wgsim.c -lz -lm
+    cd ..
+
+The `jsim.pl` script does the rest.
+
+For a reference, I've chosen the fosmid scaffold 999.fasta from the Cossu et
+al. dataset S4, containing a single 41853 bp sequence with no N.
+
+
+Error-free reads
+----------------
+
+As `jsim.pl` is configured now, it simulates the fragment assuming error-free
+non-overlapping read pairs.  Read pairs are simulated into the files `r1.fq`
+and `r2.fq` using the options `wgsim -N5 -d1000 -s0 -1250 -2250 -e0 -R0
+999.fasta r1.fq r2.fq` and then butt-joined into a single fragment.  Then, a
+normal deviate *t* of mean 100 and standard deviation 20 is drawn and rounded
+and this many bases are trimmed from the left end of the fragment, with 100 -
+*t* bases trimmed from the right end.  The resulting fragment is 400 bp in
+length.
+
+The position of the butt-join is tracked through this trim process and the
+fragment is output using a read name having the `/1` of the first readname
+replaced with `_j:###` where `###` is the position within the sequence
+(0-based) where the second read starts.
+
+To simulate 5 error-free reads, which results from the current defaults:
+
+    ./jsim.pl 999.fasta > simreads.fq
+
+To simulate more reads, provide the `-N` option. Two example simulated reads:
+
+```
+@999_27610_28609_0:0:0_0:0:0_7_j:197
+TGTTTTTTCCCCCTTGGGGGTTTTGATTCCCTTGGTTCTGGTTGCCCCCAGTAGGTTGGTTCTGTTGGGGGTGATTCCCGCCTTGACCTGGGTTGCTATTGTTCCAGTTTTTTCCTTTATTTTTGGCATTATTCGATTGATGGGTTAGATTTTTCATATTCAACTGTTCAAAATTTTGATATTGCTAAATGGGAGAGGGCCAAATCATTTTTGACCTTCTTCCAATTACCAATCCACCATGACAATGGTCTTGAACTACTTTCTAATTTTAAACAAACCTTAGCCACACATATCACTGATCACATTCACGAGTGGCGTCGCCGACGTAGTTTGTGAAAAGCAGAAACCACCAAACAATAATGTCTTGATTGGTTTCTCAAATCACTTTTCTCTCTCCTCG
++
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+@999_10527_11526_0:1:0_0:0:0_8_j:189
+AATGTAGCTGAATTCTAGCTTCAATTATTTTCCAACATCCTCGAGAATGATCAATTAATCGAGAAGTTGCACAATGCGTTATACCTAGTTTCAGGGAATGAAGAACCCATAGAAGCAGGAATAAGGTCTAATCTTCCTGAGAAGAGTACTCAGAGAGTGCAGAGAAGAAAGGTACGAAATGGAAAATAAATCCATCTGCATCTCTACTTCCAACAGTTCCTTGTTTTGAAACCTATACTTGATGGCTTGCTTCACATCGTCCCAATCTCTGATTAAGGCTTTATGATTGGCCCACCATCTGACAAGGGTGTCCTGAAAGGCTACATTTAGTACTGAGATCTTTTGATCCTCTACTACCTTTTCGTATGAGATTTGTTGCCAGCTATCAAATGCCAGTTCA
++
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
+```

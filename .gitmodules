@@ -4,3 +4,6 @@
 [submodule "yaggo"]
 	path = yaggo
 	url = https://github.com/gmarcais/yaggo
+[submodule "testdata/jsim/wgsim"]
+	path = testdata/jsim/wgsim
+	url = https://github.com/lh3/wgsim
