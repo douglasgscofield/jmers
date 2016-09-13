@@ -36,18 +36,45 @@
 #include "SimpleOpt.h"
 #include "SimpleGlob.h"
 
+/*
+    CURRENT TODO:
+ 
+  o figure out if a canonical database works
+    o should at least have different workings for canonical/non-canonical (prob. prefer/enforce non-canonical)
+  o is a bloom-counter a smaller database?
+  o calculate some probabilities!
+        o do I need poisson?
+        o is GC-content biased * qual ok?
+  o do DFS on paths, and basically follow forever if needed
+  o evaluate ranges between kmer-stretches instead of at edges to try to "meet" kmer-walking
+  o make something simple to visualize paths in OpenGL
+  o use SimpleOpt.h for arg parsing (find at https://github.com/douglasgscofield/samla)
+  o 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ */
+
 // SimpleOpt command line argument handling
-enum { OPT_HELP, OPT_ERROR };
+enum { OPT_HELP, OPT_ERROR, OPT_KMER, OPT_LIMIT };
 CSimpleOpt::SOption g_rgOptions[] = {
-    { OPT_ERROR, "-e",     SO_NONE    }, // "-e"
+    { OPT_ERROR, "-e",     SO_NONE    }, // "-e"        default: true
+    { OPT_KMER,  "-k",     SO_NONE    }, // "-k"        default: false
+    { OPT_LIMIT, "-l",     SO_REQ_SEP }, // "-l"        read limiter
     { OPT_HELP,  "-?",     SO_NONE    }, // "-?"
-    { OPT_HELP,  "-h",     SO_NONE    }, // "-?"
+    { OPT_HELP,  "-h",     SO_NONE    }, // "-h"
     { OPT_HELP,  "--help", SO_NONE    }, // "--help"
     SO_END_OF_OPTIONS                       // END
 };
 
 void Help() {
-    printf( "USAGE: ./jmers [-e] [-?|-h|--help] <Jellyfish database> <fastq file>\n" );
+    printf( "USAGE: ./jmers [-e] [-k] [-?|-h|--help] <Jellyfish database> <fastq file>\n" );
 }
 
 
@@ -55,10 +82,13 @@ int main(int argc, char *argv[])
 {
     // Process arguments with SimpleOpts
     bool error_correct = true;
+    bool print_kmer_content = false;
+    int read_limit = -1;
     std::string database;
     CSimpleOpt args(argc, argv, g_rgOptions);
 
-    while (args.Next()) {
+    while (args.Next())
+    {
         if (args.LastError() == SO_SUCCESS) {
             if (args.OptionId() == OPT_HELP) {
                 Help();
@@ -66,6 +96,10 @@ int main(int argc, char *argv[])
             }
             else if (args.OptionId() == OPT_ERROR)
                 error_correct = false;
+            else if (args.OptionId() == OPT_KMER)
+                print_kmer_content = true;
+            else if (args.OptionId() == OPT_LIMIT)
+                read_limit = atoi(args.OptionArg());
             else
                 printf("Option, ID: %d, Text: '%s', Argument: '%s'\n",
                     args.OptionId(), args.OptionText(),
@@ -76,7 +110,7 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-
+    
     CSimpleGlob glob(SG_GLOB_NODOT|SG_GLOB_NOCHECK);
     if (SG_SUCCESS != glob.Add(args.FileCount(), args.Files())) {
         printf("Error while globbing files\n");
@@ -93,7 +127,6 @@ int main(int argc, char *argv[])
     
     // Load jellyfish database
     jmers::JellyfishDatabase jf_db( database );
-    jmers::KmerBoundarySimple kmer_boundary( &jf_db );
     
     //std::cout << "Loaded Jellyfish database, with kmer " << jf_db.kmer << std::endl;
     
@@ -109,12 +142,13 @@ int main(int argc, char *argv[])
             jmers::Input seq_file = jmers::Input( args.Files()[i] );
             while ( seq_file.read(s) )
             {
-                jmers::FosmidEndFragment fosmid_end_fragment = kmer_boundary.detect_boundary(s);
+                jmers::KmerBoundarySimple kmer_boundary( &jf_db );
+                jmers::FosmidEndFragment fosmid_end_fragment = kmer_boundary.detect_boundary(s, error_correct, print_kmer_content);
                 //fosmid_end_fragment.split_fragment();
                 //fosmid_end_fragment.write_pair_fasta();
                 //fosmid_end_fragment.dump();
                 
-                if ( ++c >= 100)
+                if ( read_limit > 0 and ++c > read_limit )
                     break;
             }
         }

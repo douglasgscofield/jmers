@@ -19,6 +19,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <map>
 #include "jmerfish.hpp"
 
 namespace jmers {
@@ -39,6 +40,58 @@ class KmerDB {
 
 KmerDB empty_db = KmerDB();
 */
+
+struct extension {
+    char base = '-';
+    int kmer_support = 0;
+    bool complete = false;
+    std::vector<extension> next;
+};
+
+// should this be a class - so that you can do these things from within the data structure?
+// this would probably allow for better data access...
+
+struct range {
+    int start = -1;
+    int end = -1;
+    int max_k = -1;
+    int max_i = -1;
+    int longest_forward_score = 0;
+    int longest_reverse_score = 0;
+    std::string longest_forward = "";
+    std::string longest_reverse = "";
+    std::vector<extension> forward;
+    std::vector<extension> reverse;
+};
+
+bool compare_range(const range &a, const range &b)
+{
+    return a.max_k > b.max_k;
+}
+
+
+void print_extension( std::vector<extension> extension, int indent = 0 )
+{
+    if ( extension.size() == 0 )
+    {
+        printf("\n");
+        return;
+    }
+    bool first = true;
+    for ( auto e : extension )
+    {
+        if ( !first )
+        {
+            for (int i = 0; i < indent; i++)
+                printf(" ");
+        }
+        printf(" -> %c", e.base);
+        if (e.complete)
+            printf("*");
+        print_extension(e.next, indent + 5);
+    }
+}
+
 class KmerBoundary {
     
   public:
@@ -48,173 +101,271 @@ class KmerBoundary {
 };   // class KmerBoundary
 
 class KmerBoundarySimple : KmerBoundary {
-    JellyfishDatabase *A;
+    JellyfishDatabase *db;
     enum sense_t { sense_none = 0, sense_AB, sense_BA };
     std::vector<int> kmer_content;
     std::vector<int> base_support;
-    
-    Seq error_correct(Seq& seq, int max_corrections_per_kmer = 4, bool exhaustive = false, float w_b = .5, float w_q = .5)
-    {
-        Seq out;
-        out.comment     = seq.comment + " error corrected";
-        out.has_quality = seq.has_quality;
-        out.name        = seq.name;
-        out.sequence    = seq.sequence;
-        out.quality     = seq.quality;
-        
-        int last_hit = A->kmer;
-        std::vector<int> positions;
-        positions.resize( max_corrections_per_kmer, 0 );
-        for (int i = 0; i < out.sequence.length(); i++)
-        {
-            if (i < this->kmer_content.size()-A->kmer)
-            {
-                int kmer = A->query( out.sequence.substr(i, A->kmer) );
-                if ( kmer == 0 )
-                {
-                    std::string current_kmer = out.sequence.substr(i, A->kmer);
-                    last_hit = last_hit < A->kmer ? last_hit+1 : A->kmer;
-                    
-                    /* ok - so... should I go through all possible positions?
-                        or should I make a list of positions and only check those
-                        with the lowest base_support? should I factor in quality?
-                        some sort of a*base_support+b*quality weighted value in 
-                        a list probably. then loop over the list and check 
-                        substitutions for all positions until we find the one
-                        with the highest score... or just one with "a" score?
-                        exhaustive search of all posibilities, or just check 
-                        all variables independent?
-                        
-                        I'm gonna need to recurse this a bit...
-                    
-                    */
-                    
-                    // make a list of all possible positions that could be "wrong"
-                    std::map<int, double> position_values;
-                    for (int p = 0; p < last_hit; p++)
-                    {
-                        int pos = i+A->kmer-last_hit+p;
-                        if (out.has_quality)
-                            position_values[pos] = w_b*base_support[pos] + w_q*((int)out.quality[pos]-33);
-                        else
-                            position_values[pos] = base_support[pos];
-                    }
-                    
-                    // remove the highest support possible position until no more than
-                    // "max_corrections_per_kmer" remain.
-                    
-                    while (position_values.size() > max_corrections_per_kmer)
-                    {
-                        auto x = std::max_element(position_values.begin(), position_values.end(),
-                            [](const std::pair<int, int>& p1, const std::pair<int, int>& p2) {
-                                return p1.second < p2.second; });
-                        position_values.erase(x);
-                    }
-                    // for (auto p: position_values)
-                    //     std::cout << p.first << " " << p.second << "\t";
-                    // std::cout << std::endl;
-                    
-                    if (exhaustive)
-                    {
-                        // TODO: implement this as a recursion.
-                        1+1;
-                    }
-                    else
-                    {
-                        for ( auto p : position_values )
-                        {
-                            int pos = p.first-i;
-                            for ( char c : {'A', 'T', 'C', 'G'} )
-                            {
-                                if ( c == out.sequence[p.first] )
-                                    continue;
-                                std::string new_kmer = current_kmer;
-                                new_kmer[pos] = c;
-                                
-                                if ( A->query( new_kmer ) )
-                                {
-                                    out.sequence[p.first] = c;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    last_hit = 0;
-                }
-            }
-        }
-        return out;
-    }
+    std::vector<range> start_positions;
     
   public:
-    KmerBoundarySimple(JellyfishDatabase *a) { A = a; }
+    KmerBoundarySimple(JellyfishDatabase *a) { db = a; }
     ~KmerBoundarySimple() {}
     std::string describe() const {
         std::stringstream s;
-        s << "A:" << A->describe();
+        s << "A:" << db->describe();
         return s.str();
     }
-    jmers::FosmidEndFragment detect_boundary(Seq& seq, bool error_correct = true)
+    jmers::FosmidEndFragment detect_boundary(Seq& seq, bool error_correct = true, bool print_kmer_content = false)
     {
+        
         /* Check kmer content of current sequence */
         kmer_content.clear();
-        for (int i = 0; i < seq.sequence.length()-A->kmer; i++)
+        for (int i = 0; i < seq.sequence.length()-db->kmer; i++)
         {
-            kmer_content.push_back( A->query( seq.sequence.substr(i, A->kmer) ) );
+            kmer_content.push_back( db->query( seq.sequence.substr(i, db->kmer) ) );
         }
         base_support.clear();
         base_support.resize( seq.sequence.length(), 0 );
         int o = 0;
         for ( auto k : kmer_content)
         {
-            for (int i = 0; i < A->kmer; i++)
+            for (int i = 0; i < db->kmer; i++)
             {
                 base_support[o+i] += k;
             }
             o++;
         }
+        if ( print_kmer_content )
+        {
+            std::cout << ">" << seq.name << std::endl;
+            for ( auto c : kmer_content )
+                std::cout << c << " ";
+            std::cout << std::endl;
+        }
         
-        /* use the kmer content to error correct the sequence? */
-        Seq corrected_seq = error_correct ? this->error_correct(seq) : seq;
         if (error_correct)
         {
+            this->error_correct(seq);
             kmer_content.clear();
+            
             /* Update the kmer content */
-            for (int i = 0; i < seq.sequence.length()-A->kmer; i++)
+            for (int i = 0; i < seq.sequence.length()-db->kmer; i++)
             {
-                kmer_content.push_back(  A->query( corrected_seq.sequence.substr(i, A->kmer) ) );
+                kmer_content.push_back(  db->query( seq.sequence.substr(i, db->kmer) ) );
             }
-            /* Update the base support */
+            // /* Update the base support */
             base_support.clear();
             base_support.resize( seq.sequence.length(), 0 );
             o = 0;
             for ( auto k : kmer_content)
             {
-                for (int i = 0; i < A->kmer; i++)
+                for (int i = 0; i < db->kmer; i++)
                 {
                     base_support[o+i] += k;
                 }
                 o++;
             }
         }
-        
-        /* print kmer content and base support */
-        std::cout << ">" << seq.name << std::endl;
-        for ( auto c : kmer_content )
-            std::cout << c << " ";
-        std::cout << std::endl;
-        for ( auto b : base_support )
-            std::cout << b << " ";
-        std::cout << std::endl;
+
+        if ( print_kmer_content )
+        {
+            for ( auto c : kmer_content )
+                std::cout << c << " ";
+            std::cout << std::endl;
+            // for ( auto b : base_support )
+            //     std::cout << b << " ";
+            // std::cout << std::endl;
+        }
         
         /* create fosmid end data structure */
-        jmers::FosmidEndFragment fosmid_end(corrected_seq);
+        jmers::FosmidEndFragment fosmid_end(seq);
         //fosmid_end.infer_fragment_structure(kmer_content, base_support);
         return fosmid_end;
     }
+private:
+    
+    int find_start_positions(int number_of_positions = -1)
+    {
+        /* This algorithm is basically:
+         * 
+         * 1) find all "islands" of non-zero kmer content stretches
+         *
+         * 2) find the "peak" (highest kmer content value) of each island
+         *
+         * 3) return the max(#peaks, number_of_positions) highest peaks
+         */
+        
+        // 1) Find all non-zero kmer content stretches
+        std::vector <range> non_zero_stretches;
+        range r;
+        int i = 0;
+        for ( auto k : kmer_content )
+        {
+            if (k)
+            {
+                if (r.start < 0)
+                {
+                    r.start = i;
+                }
+            }
+            else
+                if (r.start >= 0)
+                {
+                    r.end = i-1;
+                    non_zero_stretches.push_back(r);
+                    r.start = -1;
+                    r.end = -1;
+                }
+            i++;
+        }
+        if (r.start > 0 && r.end <= 0)
+        {
+            r.end = i-1;
+            non_zero_stretches.push_back(r);
+        }
+        
+        // 2) find the highest kmer content value of each range
+        
+        for ( int c = 0; c < non_zero_stretches.size(); c++ )
+        {
+            range r = non_zero_stretches[c];
+            for (int i = r.start; i <= r.end; i++)
+                if ( kmer_content[i] > r.max_k )
+                {
+                    r.max_k = kmer_content[i];
+                    r.max_i = i;
+                }
+            non_zero_stretches[c].max_k = r.max_k;
+            non_zero_stretches[c].max_i = r.max_i;
+        }
+        
+        // return the max(#peaks, number_of_positions) highest peaks
+        std::sort(non_zero_stretches.begin(), non_zero_stretches.end(), compare_range);
+        int p = 0;
+        for ( auto &r : non_zero_stretches)
+        {
+            start_positions.push_back(r);
+            if (number_of_positions > 0 && ++p >= number_of_positions)
+                break;
+        }
+        return 0;
+    }
+    
+    int extend_ranges( Seq& seq )
+    {
+        for ( auto &r : this->start_positions )
+        {
+            this->extend( r, r.forward, seq, 1 );
+            this->extend( r, r.reverse, seq, -1 );
+        }
+        return 0;
+    }
+    
+    int extend( range r, std::vector<extension> &extensions, Seq& seq, int step = 1, std::string path = "" )
+    {
+        // first, check if we're running out nof sequence
+        if ( (step > 0 && path.length() + r.end >= seq.sequence.length()) || (step <= 0 && (long)r.start-(long)path.length() <= 0) )
+            return 0;
+        
+        // second, check if we have any extensions
+        for ( auto base : {'A','C','T','G'} )
+        {
+            // make some convenience variables
+            int start = step > 0 ? r.end+1+path.length() : r.start-1-path.length();
+            std::string kmer_base = seq.sequence.substr(start, db->kmer-1);
+            // then check the current extensions kmer content
+            int base_kmer_content = db->query( step > 0 ? kmer_base + base : base + kmer_base );
+            
+            // if we have no extension, just continue
+            if ( base_kmer_content <= 0 )
+                continue;
+            
+            // first - check if we can extend back to the original sequence, if we manage to do this, then we consider the 
+            // position in the path "complete" and continue
+            if ( base == seq.sequence[r.end+path.length()] )
+            {
+                extension e;
+                e.base = base;
+                e.kmer_support = base_kmer_content;
+                e.complete = true;
+                extensions.push_back(e);
+                return 0;
+            }
+            else // ... otherwise - continue the path somewhere else
+            {
+                extension e;
+                e.base = base;
+                e.kmer_support = base_kmer_content;
+                extensions.push_back(e);
+            }
+        }
+        
+        // if the path continues, but isn't 'complete', extend all exensions
+        for ( auto &e : extensions)
+        {
+            this->extend( r, e.next, seq, step, path + e.base);
+        }
+        
+        
+        return 0;
+    }
+    
+    int apply_extensions(Seq &seq)
+    {
+        for ( auto &r : this->start_positions )
+        {
+            // Find best forward extension
+            std::string max_path = "";
+            int max_support = 0;
+            this->find_max_extension(r.forward, &max_path, &max_support);
+            for (int i = 0; i < max_path.length(); i++)
+                seq.sequence[r.end + i] = max_path[i];
+            
+            max_path = "";
+            max_support = 0;
+            // Find best reverse extension
+            this->find_max_extension(r.reverse, &max_path, &max_support);
+            for (int i = 0; i < max_path.length(); i++)
+                seq.sequence[r.start - i] = max_path[i];
+            
+        }
+        fflush(stdout);
+        return 0;
+    }
+    
+    void find_max_extension( std::vector<extension> extensions, std::string *max_path, int *max_support, std::string path = "", int support = 0, int level = 0)
+    {
+        if ( extensions.size() == 0 )
+            return;
+        
+        for ( auto e : extensions )
+        {
+            std::string new_path = path.c_str();
+            new_path += e.base;
+            if ( new_path.length() > max_path->length() || (new_path.length() == max_path->length() && (support+e.kmer_support) > *max_support) )
+            {
+                *max_path = new_path.c_str();
+                *max_support = support+e.kmer_support;
+            }
+            find_max_extension(e.next, max_path, max_support, new_path, support+e.kmer_support, level +1);
+        }
+    }
+    
+    int error_correct(Seq& seq)
+    {
+        // 1) - find some good 'reliable' positions to start error correcting
+        this->find_start_positions();
+        
+        // 2)  - Attempt to fill in the regions without kmer support
+        // 2.1 - first find alternative paths
+        this->extend_ranges( seq );
+        
+        // 2.2 - then choose the 'best' path and apply it to the sequence
+        this->apply_extensions( seq );
+        
+        return 0;
+    }
+    
 };   // class KmerBoundarySimple
 
 
@@ -238,7 +389,7 @@ class KmerBoundaryDissimilar {
     { }
     std::string describe() const {
         std::stringstream s;
-        s << "A:" << A->describe() << ", B:" << B.describe();
+        s << "A:" << db->describe() << ", B:" << B.describe();
         return s.str();
     }
     int64_t detect_boundary(Seq& seq, sense_t sns, int64_t pos = 0,
