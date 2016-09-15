@@ -11,4 +11,3 @@ JELLYFISH= ../../Jellyfish/bin/jellyfish
 # initiates the DWGSIM submodule
 .init:
 	cd DWGSIM; git submodule init; git submodule update; make
-	cd wgsim; make

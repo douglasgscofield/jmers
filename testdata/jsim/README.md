@@ -6,8 +6,7 @@ sequence with known error rates.  Join the reads into a single read with a
 known, randomised join position.  Then, create a Jellyfish kmer database for
 the reference and attempt to identify the join position within the read.
 
-I've made Heng Li's `wgsim` read simulator and Nils Homer's `dwgsim` extension
-of it both submodules here.  `dwgsim` is used by default.  To build both:
+I've made Nils Homer's `dwgsim` a submodule here.  To build:
 
     make .init
 
@@ -100,6 +99,6 @@ is reverse-complement)?
     a<a<a<a   B>B>B>B
 
 The circularisation implies an orientation, of course, but I can't sort it out
-just now.  When `dwgsim` is used (the default) 'mate pair' orientation is used,
-which is the first of the four.  With `wgsim` or `-o 0`, the second is used.
+just now.  The default is 'mate pair' orientation, which is the first of the
+four.  With `-o 0`, the second is used.
 

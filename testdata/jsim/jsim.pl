@@ -29,7 +29,6 @@ my $o_base_error_rate = 0;
 my $o_mutation_rate = 0;
 my $o_seed = 1;
 my $o_orientation = 1;
-my $o_wgsim = 0;
 
 my $N_trunc = 0;
 my $usage = "
@@ -47,9 +46,7 @@ reference mutation rate with -r.
   -l INT     read length (applies to both reads of a pair) [default $o_readlen]
   -t INT     total bases to trim from both ends of read fragment [default $o_trim]
   -T INT     half-trim standard deviation [default $o_trim_sd]
-  -o 0 or 1  read orientation 0: F,R, 1: F,F [dwgsim only, default $o_orientation]
-  -w         use wgsim (https://github.com/lh3/wgsim) to simulate reads; default
-             is dwgsim (https://github.com/nh13/DWGSIM).  Both are submodules.
+  -o 0 or 1  read orientation 0: F,R, 1: F,F [default $o_orientation]
 
 The end trim (controlled with -t and -T) trims t bases in total from the ends
 of the fragment.  The left trim is t_L=Normal(mean=t/2,sd=T) and the right trim
@@ -57,7 +54,7 @@ is t_R=t-t_L.  The net effect is to produce consistently sized fragments for
 which the join location is randomised.  If t_L<0 or t_L>t, it is truncated; a
 message is produced if more than 1% of trims are truncated.
 
-No indels are simulated (-R0 to dwgsim and wgsim).
+No indels are simulated (-R0 to dwgsim).
 
 ";
 
@@ -71,27 +68,17 @@ GetOptions(
     "s|pair-sd=i"           => \$o_pair_sd,
     "t|trim=i"              => \$o_trim,
     "T|trim-sd=i"           => \$o_trim_sd,
-    "w|wgsim"               => \$o_wgsim,
 ) or die "unknown option: $!";
 die "$usage" if ! @ARGV;
 my $ref = shift @ARGV;
 die "cannot locate reference fasta $ref" if ! -f $ref;
 my ($prefix, $read1, $read2);
-if ($o_wgsim) {
-    ($read1, $read2) = ("read_wgsim.read1.fastq",      "read_wgsim.read2.fastq");
-} else {
-    $prefix = "read_dwgsim";
-    ($read1, $read2) = ("$prefix.bwa.read1.fastq", "$prefix.bwa.read2.fastq");
-}
+$prefix = "read_dwgsim";
+($read1, $read2) = ("$prefix.bwa.read1.fastq", "$prefix.bwa.read2.fastq");
 #
 # Simulate non-overlapping read ends
-my $cmd;
-if ($o_wgsim) {
-    $cmd = "./wgsim/wgsim -S$o_seed -N$o_N -d$o_pair_outer -s$o_pair_sd -1$o_readlen -2$o_readlen -e$o_base_error_rate -R0 -r$o_mutation_rate $ref $read1 $read2 > /dev/null";
-} else {
-    $cmd = "./DWGSIM/dwgsim -z$o_seed -N$o_N -d$o_pair_outer -s$o_pair_sd -1$o_readlen -2$o_readlen -e$o_base_error_rate -E$o_base_error_rate -R0 -r$o_mutation_rate -y0 -S$o_orientation $ref $prefix > /dev/null";
-}
-say STDERR "sim command: $cmd";
+my $cmd = "./DWGSIM/dwgsim -z$o_seed -N$o_N -d$o_pair_outer -s$o_pair_sd -1$o_readlen -2$o_readlen -e$o_base_error_rate -E$o_base_error_rate -R0 -r$o_mutation_rate -y0 -S$o_orientation $ref $prefix > /dev/null";
+say STDERR "dwgsim command: $cmd";
 system($cmd);
 
 # Merge together
