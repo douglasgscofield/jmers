@@ -1,0 +1,5 @@
+*.bfast.fastq
+*.read?.fastq
+*.mutations.txt
+*.mutations.vcf
+

@@ -7,3 +7,6 @@
 [submodule "testdata/jsim/wgsim"]
 	path = testdata/jsim/wgsim
 	url = https://github.com/lh3/wgsim
+[submodule "testdata/jsim/DWGSIM"]
+	path = testdata/jsim/DWGSIM
+	url = https://github.com/nh13/DWGSIM.git
