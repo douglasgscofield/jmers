@@ -24,7 +24,8 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
-        CC = clang++
+        #CC = clang++
+        CC = g++
         #
         # Default values for OS X, since there's usually no pkg-config
         #
@@ -36,8 +37,8 @@ else
     endif
 endif
 
-DEPS = kseq/kseq.h
 SOURCES = jmers.cc
+DEPS = jmers.h Input.h FosmidEndFragment.h KmerBoundary.h jmerfish.hpp sequence_mers.hpp SimpleOpt.h SimpleGlob.h kseq/kseq.h
 OBJ = $(SOURCES:.cc=.o)
 OUTPUT = jmers
 

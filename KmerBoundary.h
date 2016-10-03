@@ -120,7 +120,7 @@ class KmerBoundarySimple : KmerBoundary {
         
         /* Check kmer content of current sequence */
         kmer_content.clear();
-        for (int i = 0; i < seq.sequence.length()-db->kmer; i++)
+        for (uint64_t i = 0; i < seq.sequence.length()-db->kmer; i++)
         {
             kmer_content.push_back( db->query( seq.sequence.substr(i, db->kmer) ) );
         }
@@ -149,7 +149,7 @@ class KmerBoundarySimple : KmerBoundary {
             kmer_content.clear();
             
             /* Update the kmer content */
-            for (int i = 0; i < seq.sequence.length()-db->kmer; i++)
+            for (uint64_t i = 0; i < seq.sequence.length()-db->kmer; i++)
             {
                 kmer_content.push_back(  db->query( seq.sequence.substr(i, db->kmer) ) );
             }
@@ -226,7 +226,7 @@ private:
         
         // 2) find the highest kmer content value of each range
         
-        for ( int c = 0; c < non_zero_stretches.size(); c++ )
+        for (uint64_t c = 0; c < non_zero_stretches.size(); c++ )
         {
             range r = non_zero_stretches[c];
             for (int i = r.start; i <= r.end; i++)
@@ -318,14 +318,14 @@ private:
             std::string max_path = "";
             int max_support = 0;
             this->find_max_extension(r.forward, &max_path, &max_support);
-            for (int i = 0; i < max_path.length(); i++)
+            for (uint64_t i = 0; i < max_path.length(); i++)
                 seq.sequence[r.end + i] = max_path[i];
             
             max_path = "";
             max_support = 0;
             // Find best reverse extension
             this->find_max_extension(r.reverse, &max_path, &max_support);
-            for (int i = 0; i < max_path.length(); i++)
+            for (uint64_t i = 0; i < max_path.length(); i++)
                 seq.sequence[r.start - i] = max_path[i];
             
         }

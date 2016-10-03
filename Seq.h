@@ -57,7 +57,7 @@ class Seq {
     void extend(std::string bases, int quality = 20, int quality_offset = 33)
     {
         sequence += bases;
-        for (auto c : bases)
+        for (auto c : bases)  // this assumes each base has default quality
             quality += (char)(quality + quality_offset);
         l += bases.length();
     }
